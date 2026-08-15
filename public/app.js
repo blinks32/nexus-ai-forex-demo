@@ -38,8 +38,8 @@ es.addEventListener('init', e => {
   applySnap(data.snap);
   if (data.news) showNews(data.news);
   setConn(true);
-  buildTicker();
-  buildTabs();
+  buildTicker(data.snap.ticker);
+  buildTabs(data.snap.ticker);
   renderAll();
 });
 
@@ -103,6 +103,17 @@ function updatePanels(snap) {
   $('account-no').textContent = snap.meta.accountNo;
   $('broker').textContent = snap.meta.broker;
   $('bot-version').textContent = snap.meta.botName;
+  const isLive = snap.meta.adapter === 'live';
+  const badge = $('mode-badge');
+  badge.textContent = isLive ? 'LIVE MT' : 'DEMO';
+  badge.className = 'badge ' + (isLive ? 'live' : 'demo');
+  const slider = $('speed-slider');
+  slider.disabled = isLive;
+  slider.style.opacity = isLive ? 0.35 : 1;
+  $('speed-val').textContent = isLive ? 'LIVE' : snap.meta.speed + 'x';
+  $('foot-mode').textContent = isLive
+    ? 'NEXUS-AI connected to a real MetaTrader DEMO account via MetaApi — prices and orders are live, funds are virtual.'
+    : 'NEXUS-AI simulated demo engine — no real funds involved.';
   const btn = $('btn-pause');
   const paused = snap.meta.status === 'PAUSED';
   btn.textContent = paused ? 'RESUME' : 'PAUSE';
@@ -115,10 +126,13 @@ function updatePanels(snap) {
 }
 
 /* ---------------- ticker ---------------- */
-function buildTicker() {
+function buildTicker(snapTicker) {
   const el = $('ticker');
   el.innerHTML = '';
-  for (const sym in PAIR_META) {
+  const syms = snapTicker ? Object.keys(snapTicker) : Object.keys(PAIR_META);
+  if (!syms.length) syms.push('EURUSD');
+  for (const sym of syms) {
+    if (!PAIR_META[sym]) continue;
     const d = document.createElement('div');
     d.className = 'tick-card' + (sym === state.pair ? ' active' : '');
     d.dataset.sym = sym;
@@ -150,10 +164,13 @@ function renderTicker(ticker) {
   }
 }
 
-function buildTabs() {
+function buildTabs(snapTicker) {
   const el = $('pair-tabs');
   el.innerHTML = '';
-  for (const sym in PAIR_META) {
+  const syms = snapTicker ? Object.keys(snapTicker) : Object.keys(PAIR_META);
+  if (!syms.length) syms.push('EURUSD');
+  for (const sym of syms) {
+    if (!PAIR_META[sym]) continue;
     const b = document.createElement('button');
     b.className = 'pair-tab' + (sym === state.pair ? ' active' : '');
     b.textContent = sym;

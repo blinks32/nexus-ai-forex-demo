@@ -1,5 +1,7 @@
 'use strict';
 
+const { emaSeries, rsiLast } = require('./indicators');
+
 const PAIRS = [
   { symbol: 'EURUSD', base: 1.08420, pip: 0.0001, vol: 0.000045, contract: 100000, digits: 5, name: 'Euro / US Dollar' },
   { symbol: 'GBPUSD', base: 1.27180, pip: 0.0001, vol: 0.000050, contract: 100000, digits: 5, name: 'Pound / US Dollar' },
@@ -100,24 +102,11 @@ class Market {
 
   computeIndicators(p) {
     const closes = p.candles.map(c => c.c);
-    const ema = (period) => {
-      const k = 2 / (period + 1);
-      let e = closes[0], out = [e];
-      for (let i = 1; i < closes.length; i++) { e = closes[i] * k + e * (1 - k); out.push(e); }
-      return out;
-    };
     p.prevEma9 = p.ema9.length ? p.ema9[p.ema9.length - 1] : null;
     p.prevEma21 = p.ema21.length ? p.ema21[p.ema21.length - 1] : null;
-    p.ema9 = ema(9);
-    p.ema21 = ema(21);
-    let gains = 0, losses = 0, avgG = null, avgL = null;
-    for (let i = 1; i < closes.length; i++) {
-      const d = closes[i] - closes[i - 1];
-      const g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
-      if (avgG === null) { avgG = g; avgL = l; } else { avgG = (avgG * 13 + g) / 14; avgL = (avgL * 13 + l) / 14; }
-      gains = avgG; losses = avgL;
-    }
-    p.rsi = avgL === 0 ? 100 : 100 - 100 / (1 + avgG / avgL);
+    p.ema9 = emaSeries(closes, 9);
+    p.ema21 = emaSeries(closes, 21);
+    p.rsi = rsiLast(closes);
   }
 
   currentCandle(sym) {
@@ -366,6 +355,7 @@ class Engine {
   constructor() {
     this.market = new Market();
     this.bot = new Bot(this.market);
+    this.live = null;
     this.news = null;
     this.nextNewsAt = Date.now() + 25000 + Math.random() * 60000;
     this.tickClock = 0;
@@ -373,7 +363,31 @@ class Engine {
     setInterval(() => this.tick(), 250);
   }
 
+  async init() {
+    if (process.env.METAAPI_TOKEN && process.env.METAAPI_ACCOUNT_ID) {
+      const { MetaTraderAdapter } = require('./metaapi');
+      const adapter = new MetaTraderAdapter(this.bot);
+      try {
+        await withTimeout(adapter.start(), 120000);
+        if (!adapter.ready) throw new Error('adapter did not become ready');
+        this.live = adapter;
+        this.lastSnap = this.live.snapshot();
+      } catch (err) {
+        this.bot.logLine(`MetaApi connection failed (${err.message}) — continuing in simulation mode`);
+        this.live = null;
+      }
+    } else {
+      this.bot.logLine('Simulation mode — set METAAPI_TOKEN + METAAPI_ACCOUNT_ID env vars to trade a real MT demo account');
+    }
+  }
+
   tick() {
+    if (this.live) {
+      if (this.bot.paused) return;
+      this.live.onTick();
+      this.lastSnap = this.live.snapshot();
+      return;
+    }
     const bot = this.bot;
     if (bot.paused) {
       bot.lastSignal = {};
@@ -396,14 +410,27 @@ class Engine {
     switch (action) {
       case 'pause': this.bot.paused = true; break;
       case 'resume': this.bot.paused = false; break;
-      case 'speed': this.bot.speed = Math.max(1, Math.min(4, value || 1)); break;
+      case 'speed': if (!this.live) this.bot.speed = Math.max(1, Math.min(4, value || 1)); break;
     }
     this.bot.logLine(this.bot.paused
       ? 'BOT PAUSED by operator — positions held, entries blocked'
+      : this.live ? 'BOT RESUMED — live trading enabled'
       : `BOT RESUMED — speed ${this.bot.speed}x`);
   }
 
+  snapshot() {
+    if (this.live) return this.live.snapshot();
+    return this.bot.snapshot();
+  }
+
   candlesSnapshot() {
+    if (this.live) {
+      const out = {};
+      for (const sym of this.live.symbols) {
+        if (this.live.candles[sym]) out[sym] = this.live.candles[sym].map(c => [c.t, c.o, c.h, c.l, c.c]);
+      }
+      return out;
+    }
     const out = {};
     for (const sym in this.market.pairs) {
       const p = this.market.pairs[sym];
@@ -411,6 +438,14 @@ class Engine {
     }
     return out;
   }
+}
+
+function withTimeout(promise, ms) {
+  let timer;
+  const timeout = new Promise((_, rej) => {
+    timer = setTimeout(() => rej(new Error(`timeout after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 module.exports = { Engine, PAIRS };

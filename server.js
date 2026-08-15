@@ -5,6 +5,17 @@ const fs = require('fs');
 const path = require('path');
 const { Engine, PAIRS } = require('./engine');
 
+loadEnv();
+
+function loadEnv() {
+  const envFile = path.join(__dirname, '.env');
+  if (!fs.existsSync(envFile)) return;
+  for (const line of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  }
+}
+
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
@@ -87,7 +98,16 @@ setInterval(() => {
   }
 }, 500);
 
-server.listen(PORT, () => {
-  console.log(`NEXUS-AI demo trading dashboard running at http://localhost:${PORT}`);
-  console.log(`Symbols: ${PAIRS.map(p => p.symbol).join(', ')}`);
+async function main() {
+  await engine.init();
+  server.listen(PORT, () => {
+    console.log(`NEXUS-AI trading dashboard running at http://localhost:${PORT}`);
+    console.log(`Mode: ${engine.live ? 'LIVE (MetaTrader via MetaApi)' : 'SIMULATION'}`);
+    console.log(`Symbols: ${PAIRS.map(p => p.symbol).join(', ')}`);
+  });
+}
+
+main().catch(err => {
+  console.error('Startup error:', err);
+  process.exit(1);
 });

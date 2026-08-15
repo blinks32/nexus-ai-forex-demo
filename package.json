@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node server.js"
   },
+  "dependencies": {
+    "metaapi.cloud-sdk": "^29.3.3"
+  },
   "engines": {
     "node": ">=18"
   }
