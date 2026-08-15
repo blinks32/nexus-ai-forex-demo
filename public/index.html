@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS-AI · Live FX Trading Dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="news-banner" class="news-banner hidden">
+  <span class="news-tag">BREAKING</span>
+  <span id="news-text"></span>
+  <button id="news-close">&times;</button>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">◈</div>
+    <div>
+      <div class="brand-name">NEXUS<span class="accent">-AI</span></div>
+      <div class="brand-sub" id="bot-version">Forex Intelligence Engine</div>
+    </div>
+  </div>
+  <div class="account-badge">
+    <span class="badge demo">DEMO</span>
+    <span id="account-no">DEMO-887341</span>
+    <span class="sep">·</span>
+    <span id="broker">NexusFX Demo</span>
+  </div>
+  <div class="topbar-right">
+    <span class="clock" id="server-clock">--:--:--</span>
+    <span class="speed-label">SPEED</span>
+    <input type="range" id="speed-slider" min="1" max="4" step="1" value="1">
+    <span id="speed-val">1x</span>
+    <button id="btn-pause" class="btn btn-primary">PAUSE</button>
+  </div>
+</header>
+
+<section class="ticker" id="ticker"></section>
+
+<div id="news-tape" class="news-tape"></div>
+
+<main class="layout">
+  <section class="panel chart-panel">
+    <div class="panel-head">
+      <div class="pair-tabs" id="pair-tabs"></div>
+      <div class="chart-info">
+        <span id="pair-name" class="muted"></span>
+        <span id="chart-ohlc" class="mono"></span>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+      <div id="chart-tip" class="chart-tip hidden"></div>
+    </div>
+    <div class="chart-legend">
+      <span class="legend-item"><span class="swatch ema9"></span>EMA 9</span>
+      <span class="legend-item"><span class="swatch ema21"></span>EMA 21</span>
+      <span class="legend-item"><span class="swatch buy"></span>Buy</span>
+      <span class="legend-item"><span class="swatch sell"></span>Sell</span>
+      <span id="chart-status" class="muted right">connecting…</span>
+    </div>
+  </section>
+
+  <aside class="side">
+    <section class="panel account-panel">
+      <div class="panel-head"><h3>ACCOUNT</h3><span id="conn-dot" class="conn-dot"></span></div>
+      <div class="acct-grid">
+        <div class="acct-cell"><span class="acct-label">BALANCE</span><span id="a-balance" class="acct-value mono">—</span></div>
+        <div class="acct-cell"><span class="acct-label">EQUITY</span><span id="a-equity" class="acct-value mono">—</span></div>
+        <div class="acct-cell"><span class="acct-label">FLOATING P/L</span><span id="a-pl" class="acct-value mono">—</span></div>
+        <div class="acct-cell"><span class="acct-label">MARGIN</span><span id="a-margin" class="acct-value mono">—</span></div>
+        <div class="acct-cell"><span class="acct-label">FREE MARGIN</span><span id="a-free" class="acct-value mono">—</span></div>
+        <div class="acct-cell"><span class="acct-label">MARGIN LEVEL</span><span id="a-level" class="acct-value mono">—</span></div>
+      </div>
+      <div class="margin-bar"><div id="margin-bar" class="margin-fill"></div></div>
+    </section>
+
+    <section class="panel stats-panel">
+      <div class="panel-head"><h3>AI PERFORMANCE</h3></div>
+      <div class="stat-row"><span>Total trades</span><span id="s-trades" class="mono">0</span></div>
+      <div class="stat-row"><span>Wins / Losses</span><span id="s-wl" class="mono">0 / 0</span></div>
+      <div class="stat-row"><span>Win rate</span><span id="s-winrate" class="mono">—</span></div>
+      <div class="stat-row"><span>Profit factor</span><span id="s-pf" class="mono">—</span></div>
+      <div class="stat-row"><span>Gross profit</span><span id="s-gp" class="mono pos">—</span></div>
+      <div class="stat-row"><span>Gross loss</span><span id="s-gl" class="mono neg">—</span></div>
+      <div class="stat-row"><span>Best trade</span><span id="s-best" class="mono pos">—</span></div>
+      <div class="stat-row"><span>Worst trade</span><span id="s-worst" class="mono neg">—</span></div>
+    </section>
+
+    <section class="panel log-panel">
+      <div class="panel-head"><h3>AI ENGINE LOG</h3></div>
+      <div id="bot-log" class="bot-log"></div>
+    </section>
+  </aside>
+</main>
+
+<section class="panel positions-panel">
+  <div class="panel-head">
+    <h3>OPEN POSITIONS <span id="pos-count" class="count-pill">0</span></h3>
+  </div>
+  <div class="table-wrap">
+    <table id="positions-table">
+      <thead><tr>
+        <th>ID</th><th>SYMBOL</th><th>SIDE</th><th>LOTS</th>
+        <th>OPEN</th><th>CURRENT</th><th>SL</th><th>TP</th>
+        <th>PIPS</th><th>P/L (USD)</th><th>AGE</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel history-panel">
+  <div class="panel-head"><h3>TRADE HISTORY</h3></div>
+  <div class="table-wrap">
+    <table id="history-table">
+      <thead><tr>
+        <th>SYMBOL</th><th>SIDE</th><th>LOTS</th><th>OPEN</th><th>CLOSE</th>
+        <th>RESULT</th><th>PIPS</th><th>P/L (USD)</th><th>DURATION</th><th>CLOSED</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<footer class="foot muted">
+  NEXUS-AI is a simulated demo trading engine for education. No real funds involved.
+  Live feed: SSE stream at /stream · Control: POST /api/control
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

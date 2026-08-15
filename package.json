@@ -1,0 +1,12 @@
+{
+  "name": "ai-forex-demo",
+  "version": "1.0.0",
+  "description": "Live dashboard for an AI forex bot trading a demo account",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
