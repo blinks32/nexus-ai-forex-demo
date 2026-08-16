@@ -278,3 +278,63 @@ tbody tr:hover { background: rgba(45,212,247,.03); }
   .layout { grid-template-columns: 1fr; }
   .ticker { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ---------- mobile ---------- */
+@media (max-width: 760px) {
+  body { font-size: 12px; }
+
+  .topbar { padding: 8px 10px; gap: 8px; }
+  .logo { width: 28px; height: 28px; font-size: 14px; border-radius: 6px; }
+  .brand-name { font-size: 13px; }
+  .brand-sub { display: none; }
+  .account-badge { padding: 4px 8px; font-size: 10px; }
+  .account-badge .sep, .account-badge #broker { display: none; }
+  .topbar-right { gap: 6px; }
+  .speed-label, #speed-slider { display: none; }
+  .btn { padding: 6px 12px; font-size: 10px; }
+  .clock { font-size: 11px; }
+
+  .ticker {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 46%;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 8px 10px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tick-card { scroll-snap-align: start; padding: 7px 10px; }
+  .tick-price { font-size: 13px; }
+  .tick-sym { font-size: 12px; }
+
+  .layout { padding: 0 10px; gap: 8px; }
+  .panel { border-radius: 10px; }
+
+  .chart-panel { min-height: 320px; }
+  .chart-wrap { min-height: 260px; }
+  .pair-tab { padding: 4px 10px; font-size: 11px; }
+  .chart-info { display: none; }
+  .chart-legend { gap: 10px; padding: 7px 10px; font-size: 10px; flex-wrap: wrap; }
+  .chart-legend .right { margin-left: 0; }
+
+  .decision-panel .panel-head h3, .account-panel .panel-head h3, .stats-panel .panel-head h3, .log-panel .panel-head h3 { font-size: 10px; }
+  .decision-side { font-size: 13px; }
+  .decision-symbol { font-size: 14px; }
+  .decision-reason { font-size: 11.5px; }
+  .acct-value { font-size: 13px; }
+
+  .positions-panel, .history-panel, .portfolio-panel { margin: 8px 10px 0; }
+  .table-wrap { max-height: 180px; }
+  thead th { padding: 6px 8px; font-size: 8.5px; }
+  tbody td { padding: 5px 8px; font-size: 10.5px; }
+  .vp-stats { gap: 12px; font-size: 11px; flex-wrap: wrap; padding: 8px 10px; }
+  .foot { padding: 12px 10px; font-size: 9.5px; line-height: 1.6; }
+}
+
+@media (max-width: 420px) {
+  .ticker { grid-auto-columns: 62%; }
+  .acct-grid { grid-template-columns: 1fr; }
+  .btn-copy { padding: 13px; font-size: 12px; }
+  .news-banner { font-size: 11px; padding: 7px 10px; }
+}
