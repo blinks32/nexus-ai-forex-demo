@@ -1,6 +1,6 @@
 'use strict';
 
-const { emaSeries, rsiLast } = require('./indicators');
+const { emaSeries, rsiLast, buildDecision } = require('./indicators');
 
 const PAIRS = [
   { symbol: 'EURUSD', base: 1.08420, pip: 0.0001, vol: 0.000045, contract: 100000, digits: 5, name: 'Euro / US Dollar' },
@@ -359,6 +359,7 @@ class Engine {
     this.news = null;
     this.nextNewsAt = Date.now() + 25000 + Math.random() * 60000;
     this.tickClock = 0;
+    this.decision = null;
     this.lastSnap = this.bot.snapshot();
     setInterval(() => this.tick(), 250);
   }
@@ -382,10 +383,12 @@ class Engine {
   }
 
   tick() {
+    this.tickClock++;
     if (this.live) {
       if (this.bot.paused) return;
+      if (this.tickClock % 160 === 0) this.decision = this.live.decide();
       this.live.onTick();
-      this.lastSnap = this.live.snapshot();
+      this.lastSnap = this.snapshot();
       return;
     }
     const bot = this.bot;
@@ -396,6 +399,7 @@ class Engine {
     const dt = bot.speed;
     this.market.tickAll(dt);
     bot.evaluate();
+    if (this.tickClock % 160 === 0) this.decision = this.decide();
     if (Date.now() > this.nextNewsAt) {
       const pair = PAIRS[Math.floor(Math.random() * PAIRS.length)].symbol;
       this.news = this.market.triggerNews(pair);
@@ -403,7 +407,52 @@ class Engine {
       bot.logLine(`NEWS EVENT [${this.news.impact}] ${this.news.headline} — risk filter engaged (8s)`);
       this.nextNewsAt = Date.now() + 60000 + Math.random() * 90000;
     }
-    this.lastSnap = bot.snapshot();
+    this.lastSnap = this.snapshot();
+  }
+
+  decide() {
+    let best = null, maxSpread = null;
+    for (const sym in this.market.pairs) {
+      const p = this.market.pairs[sym];
+      if (!p.ema9.length || !p.ema21.length) continue;
+      const e9 = p.ema9[p.ema9.length - 1];
+      const e21 = p.ema21[p.ema21.length - 1];
+      const spread = Math.abs(e9 - e21);
+      if (!maxSpread || spread > maxSpread.spread) {
+        maxSpread = { sym, e9, e21, rsi: p.rsi, price: p.price, pip: p.def.pip, spread };
+      }
+      const d = buildDecision(sym, e9, e21, p.rsi, p.price, p.def.pip);
+      if (d && (!best || d.confidence > best.confidence)) best = d;
+    }
+    if (!best && maxSpread) {
+      best = buildDecision(maxSpread.sym, maxSpread.e9, maxSpread.e21, maxSpread.rsi, maxSpread.price, maxSpread.pip) ||
+        { id: 'd' + Date.now(), time: Date.now(), symbol: maxSpread.sym, side: maxSpread.e9 >= maxSpread.e21 ? 'BUY' : 'SELL', confidence: 55, reason: `EMA divergence on ${maxSpread.sym} detected — momentum leaning ${maxSpread.e9 >= maxSpread.e21 ? 'up' : 'down'}.`, riskPct: 1, slPips: SL_PIPS, tpPips: TP_PIPS, entry: maxSpread.price };
+    }
+    return best;
+  }
+
+  currentDecision() { return this.decision; }
+
+  priceOf(sym) {
+    if (this.live) {
+      const px = this.live.priceOf(sym);
+      if (px) return { bid: px.bid, ask: px.ask };
+    }
+    const p = this.market.pairs[sym];
+    if (!p) return null;
+    return { bid: p.price, ask: p.price + p.def.vol * 2.5 };
+  }
+
+  pipOf(sym) {
+    if (this.live) return this.live.specOf(sym).pip;
+    const p = this.market.pairs[sym];
+    return p ? p.def.pip : 0.0001;
+  }
+
+  contractOf(sym) {
+    if (this.live) return this.live.specOf(sym).contract;
+    const p = this.market.pairs[sym];
+    return p ? p.def.contract : 100000;
   }
 
   control(action, value) {
@@ -419,8 +468,9 @@ class Engine {
   }
 
   snapshot() {
-    if (this.live) return this.live.snapshot();
-    return this.bot.snapshot();
+    const snap = this.live ? this.live.snapshot() : this.bot.snapshot();
+    snap.decision = this.decision;
+    return snap;
   }
 
   candlesSnapshot() {

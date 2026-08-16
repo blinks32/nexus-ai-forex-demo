@@ -224,6 +224,56 @@ tbody tr:hover { background: rgba(45,212,247,.03); }
   letter-spacing: .3px;
 }
 
+/* AI decision */
+.decision-panel { border: 1px solid rgba(45,212,247,.35); box-shadow: 0 0 24px rgba(45,212,247,.06); }
+.decision-panel .panel-head h3 { color: var(--cyan); }
+.decision-body { padding: 14px; }
+.decision-waiting { color: var(--muted); font-size: 12px; text-align: center; padding: 18px 6px; }
+.decision-line { display: flex; align-items: center; gap: 10px; }
+.decision-side {
+  font-size: 15px; font-weight: 800; letter-spacing: 2px;
+  padding: 3px 12px; border-radius: 6px;
+}
+.decision-side.buy { background: rgba(38,208,124,.14); color: var(--green); }
+.decision-side.sell { background: rgba(255,77,94,.14); color: var(--red); }
+.decision-symbol { font-size: 16px; font-weight: 700; }
+.decision-entry { margin-left: auto; color: var(--muted); font-size: 12px; }
+.decision-conf-row {
+  display: flex; justify-content: space-between; margin-top: 12px;
+  font-size: 12px; color: var(--muted);
+}
+.decision-conf-row b { color: var(--text); font-size: 15px; }
+.conf-bar { height: 6px; background: var(--border); border-radius: 3px; margin: 6px 0 12px; overflow: hidden; }
+.conf-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+.conf-fill.buy { background: linear-gradient(90deg, #16a34a, var(--green)); }
+.conf-fill.sell { background: linear-gradient(90deg, #dc2626, var(--red)); }
+.decision-reason { font-size: 12px; color: var(--text); line-height: 1.55; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+.decision-chips { display: flex; gap: 6px; margin: 11px 0; flex-wrap: wrap; }
+.chip {
+  font-size: 10px; letter-spacing: .5px; font-weight: 700;
+  color: var(--cyan); background: rgba(45,212,247,.08);
+  border: 1px solid rgba(45,212,247,.25); padding: 3px 9px; border-radius: 6px;
+}
+.btn-copy {
+  width: 100%; padding: 11px; font-size: 12px;
+  background: linear-gradient(90deg, rgba(45,212,247,.18), rgba(124,58,237,.18));
+  border: 1px solid var(--cyan); color: var(--cyan); border-radius: 8px;
+}
+.btn-copy:hover:not(:disabled) { background: rgba(45,212,247,.28); }
+.btn-copy.copied { background: rgba(38,208,124,.12); border-color: var(--green); color: var(--green); }
+.btn-copy:disabled { opacity: .7; cursor: default; }
+.copy-msg { margin-top: 8px; font-size: 11.5px; line-height: 1.5; }
+
+/* virtual portfolio */
+.portfolio-panel { margin: 12px 18px 0; }
+.vp-stats { display: flex; gap: 26px; padding: 10px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.vp-stats b { color: var(--text); font-weight: 600; }
+.btn-mini {
+  padding: 3px 10px; font-size: 9.5px; letter-spacing: 1px;
+  background: var(--panel2); color: var(--muted);
+}
+.btn-mini:hover { color: var(--red); border-color: var(--red); }
+
 @media (max-width: 1000px) {
   .layout { grid-template-columns: 1fr; }
   .ticker { grid-template-columns: repeat(2, 1fr); }

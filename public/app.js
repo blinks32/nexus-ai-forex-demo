@@ -1,6 +1,11 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
+let viewerId = localStorage.getItem('vp_viewer_id');
+if (!viewerId) {
+  viewerId = 'v_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  localStorage.setItem('vp_viewer_id', viewerId);
+}
 const fmt = (n, d = 2) => n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 const fmtUSD = n => (n >= 0 ? '+' : '') + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPct = n => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
@@ -25,6 +30,8 @@ const state = {
   prevPrices: {},
   lastNewsId: 0,
   connOk: false,
+  decisionId: null,
+  viewerId,
 };
 
 /* ---------------- SSE ---------------- */
@@ -123,7 +130,144 @@ function updatePanels(snap) {
   renderPositions(snap.positions);
   renderHistory(snap.history);
   renderLog(snap.botLog);
+  renderDecision(snap.decision);
 }
+
+/* ---------------- AI decision + copy ---------------- */
+function renderDecision(d) {
+  const body = $('decision-body');
+  const age = $('decision-age');
+  if (!d) {
+    body.innerHTML = '<div class="decision-waiting">Scanning all pairs for the strongest setup…</div>';
+    age.textContent = 'analyzing…';
+    state.decisionId = null;
+    return;
+  }
+  const ageSec = Math.max(0, Math.round((Date.now() - d.time) / 1000));
+  age.textContent = ageSec + 's ago';
+  if (state.decisionId === d.id) return;
+  state.decisionId = d.id;
+  const sym = d.symbol.replace('/', '');
+  const sideCls = d.side.toLowerCase();
+  const copied = copiedDecisions.has(d.id);
+  body.innerHTML = `
+    <div class="decision-line">
+      <span class="decision-side ${sideCls}">${d.side}</span>
+      <span class="decision-symbol mono">${sym.slice(0, 3)}/${sym.slice(3)}</span>
+      <span class="decision-entry mono">@ ${d.entry.toFixed(PAIR_META[sym] ? PAIR_META[sym].digits : 5)}</span>
+    </div>
+    <div class="decision-conf-row">
+      <span class="muted">Confidence</span>
+      <span class="mono"><b>${d.confidence}%</b></span>
+    </div>
+    <div class="conf-bar"><div class="conf-fill ${sideCls}" style="width:${d.confidence}%"></div></div>
+    <div class="decision-reason">${d.reason}</div>
+    <div class="decision-chips">
+      <span class="chip">RISK ${d.riskPct}%</span>
+      <span class="chip">SL ${d.slPips} pips</span>
+      <span class="chip">TP ${d.tpPips} pips</span>
+    </div>
+    <button id="btn-copy" class="btn btn-copy ${copied ? 'copied' : ''}" ${copied ? 'disabled' : ''}>
+      ${copied ? '✓ COPIED' : 'COPY AI TRADE'}
+    </button>
+    <div id="copy-msg" class="copy-msg"></div>`;
+  const btn = $('btn-copy');
+  if (btn && !copied) btn.addEventListener('click', doCopy);
+}
+
+const copiedDecisions = new Set(JSON.parse(localStorage.getItem('vp_copied') || '[]'));
+
+function persistCopied() {
+  localStorage.setItem('vp_copied', JSON.stringify(Array.from(copiedDecisions)));
+}
+
+async function doCopy() {
+  const btn = $('btn-copy');
+  const msg = $('copy-msg');
+  btn.disabled = true;
+  btn.textContent = 'COPYING…';
+  try {
+    const res = await fetch('/api/copy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ viewerId: state.viewerId, decisionId: state.decisionId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.className = 'copy-msg neg';
+      msg.textContent = data.error || 'Copy failed';
+      btn.disabled = false;
+      btn.textContent = 'COPY AI TRADE';
+      return;
+    }
+    copiedDecisions.add(state.decisionId);
+    persistCopied();
+    const pos = data.portfolio.positions[data.portfolio.positions.length - 1];
+    msg.className = 'copy-msg pos';
+    msg.textContent = `Copied! ${pos.side} ${pos.symbol} ${pos.lots} lots @ ${pos.entry.toFixed(5)} in your virtual account.`;
+    btn.textContent = '✓ COPIED';
+    renderPortfolio(data.portfolio);
+  } catch (e) {
+    msg.className = 'copy-msg neg';
+    msg.textContent = 'Copy failed — check connection';
+    btn.disabled = false;
+    btn.textContent = 'COPY AI TRADE';
+  }
+}
+
+/* ---------------- virtual portfolio ---------------- */
+async function pollPortfolio() {
+  try {
+    const res = await fetch('/api/portfolio?viewer=' + encodeURIComponent(state.viewerId));
+    if (res.ok) renderPortfolio(await res.json());
+  } catch (e) { /* ignore */ }
+}
+
+function renderPortfolio(vp) {
+  $('vp-balance').textContent = fmt(vp.balance, 2) + ' USD';
+  const eq = $('vp-equity');
+  eq.textContent = 'Equity ' + fmt(vp.equity, 2) + ' USD';
+  const fl = $('vp-floating');
+  fl.textContent = fmtUSD(vp.floatingPL) + ' USD';
+  fl.className = 'mono ' + (vp.floatingPL >= 0 ? 'pos' : 'neg');
+  $('vp-count').textContent = vp.positions.length;
+  const tb = document.querySelector('#vp-table tbody');
+  tb.innerHTML = '';
+  if (!vp.positions.length) {
+    tb.innerHTML = '<tr><td colspan="10" class="muted" style="text-align:center;padding:18px">No copied trades yet — press COPY AI TRADE when a decision appears.</td></tr>';
+    return;
+  }
+  for (const p of vp.positions) {
+    const d = PAIR_META[p.symbol].digits;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${p.symbol}</b></td>
+      <td><span class="pill-side ${p.side}">${p.side}</span></td>
+      <td>${fmt(p.lots, 2)}</td>
+      <td>${fmt(p.entry, d)}</td>
+      <td class="${p.profit >= 0 ? 'pos' : 'neg'}">${fmt(p.current, d)}</td>
+      <td class="muted">${fmt(p.sl, d)}</td>
+      <td class="muted">${fmt(p.tp, d)}</td>
+      <td class="${p.profit >= 0 ? 'pos' : 'neg'}"><b>${fmtUSD(p.profit)}</b></td>
+      <td class="muted">${fmtDur((Date.now() - p.openTime) / 1000)}</td>
+      <td><button class="btn btn-mini" data-close="${p.id}">CLOSE</button></td>`;
+    tb.appendChild(tr);
+  }
+  tb.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeVirtual(b.dataset.close)));
+}
+
+async function closeVirtual(positionId) {
+  try {
+    const res = await fetch('/api/portfolio/close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ viewerId: state.viewerId, positionId }),
+    });
+    if (res.ok) renderPortfolio((await res.json()).portfolio);
+  } catch (e) { /* ignore */ }
+}
+
+setInterval(pollPortfolio, 2000);
 
 /* ---------------- ticker ---------------- */
 function buildTicker(snapTicker) {

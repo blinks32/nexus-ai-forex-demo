@@ -63,6 +63,16 @@
   </section>
 
   <aside class="side">
+    <section class="panel decision-panel">
+      <div class="panel-head">
+        <h3>AI DECISION</h3>
+        <span id="decision-age" class="muted mono">analyzing…</span>
+      </div>
+      <div id="decision-body" class="decision-body">
+        <div class="decision-waiting">Scanning all pairs for the strongest setup…</div>
+      </div>
+    </section>
+
     <section class="panel account-panel">
       <div class="panel-head"><h3>ACCOUNT</h3><span id="conn-dot" class="conn-dot"></span></div>
       <div class="acct-grid">
@@ -118,6 +128,27 @@
       <thead><tr>
         <th>SYMBOL</th><th>SIDE</th><th>LOTS</th><th>OPEN</th><th>CLOSE</th>
         <th>RESULT</th><th>PIPS</th><th>P/L (USD)</th><th>DURATION</th><th>CLOSED</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel portfolio-panel">
+  <div class="panel-head">
+    <h3>YOUR VIRTUAL ACCOUNT <span class="muted" style="letter-spacing:0">— copied trades land here</span></h3>
+    <span id="vp-equity" class="mono">—</span>
+  </div>
+  <div class="vp-stats">
+    <span>Balance <b id="vp-balance" class="mono">—</b></span>
+    <span>Floating P/L <b id="vp-floating" class="mono">—</b></span>
+    <span>Open positions <b id="vp-count" class="mono">0</b></span>
+  </div>
+  <div class="table-wrap">
+    <table id="vp-table">
+      <thead><tr>
+        <th>SYMBOL</th><th>SIDE</th><th>LOTS</th><th>ENTRY</th><th>CURRENT</th>
+        <th>SL</th><th>TP</th><th>P/L (USD)</th><th>AGE</th><th></th>
       </tr></thead>
       <tbody></tbody>
     </table>

@@ -6,7 +6,7 @@
 
 const SDK = require('metaapi.cloud-sdk');
 const MetaApi = SDK.default || SDK.MetaApi;
-const { emaSeries, rsiLast } = require('./indicators');
+const { emaSeries, rsiLast, buildDecision } = require('./indicators');
 
 const SYMBOLS = ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD'];
 const FALLBACK_PIP = { EURUSD: 0.0001, GBPUSD: 0.0001, USDJPY: 0.01, XAUUSD: 0.1 };
@@ -282,6 +282,19 @@ class MetaTraderAdapter {
     const closes = arr.map(c => c.c);
     const e9 = emaSeries(closes.slice(0, -1), 9);
     return e9[e9.length - 1];
+  }
+
+  decide() {
+    let best = null;
+    for (const s of this.symbols) {
+      if (this.ema9[s] === undefined) continue;
+      const px = this.priceOf(s);
+      if (!px) continue;
+      const { pip } = this.specOf(s);
+      const d = buildDecision(s, this.ema9[s], this.ema21[s], this.rsi[s], px.bid, pip);
+      if (d && (!best || d.confidence > best.confidence)) best = d;
+    }
+    return best;
   }
 
   async tryOpen(sym, side, px) {
